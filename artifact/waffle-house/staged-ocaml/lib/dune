@@ -1,0 +1,11 @@
+(library
+ (preprocess (pps ppx_jane))
+ (foreign_stubs
+  (language c)
+  (names random_stub sr_random_stub lehmer_stub)
+  (flags -O3 -fPIC))
+ (libraries splittable_random base base_quickcheck)
+ (flags :standard -linkall)
+ (public_name fast_gen)
+ (name fast_gen))
+(include_subdirs unqualified)
