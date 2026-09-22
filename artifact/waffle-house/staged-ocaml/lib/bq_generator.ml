@@ -1,0 +1,84 @@
+type 'a t = 'a Base_quickcheck.Generator.t
+
+module C = struct
+  type 'a t = 'a
+  let lift x = x
+  let i2f = Float.of_int
+  let pair x y = (x,y)
+  let pred n = n - 1
+  let div2 n = n / 2
+  let cons x xs = x :: xs
+  let cnil = []
+  let plus m n = m + n
+  let minus m n = m - n
+  let modulus x n = x mod n
+  let modulus2 x1 x2 = x1 mod x2
+end
+
+type 'a c = 'a C.t
+
+module R = Sr_random
+
+module For_applicative = Base.Applicative.Make (struct
+    type nonrec 'a t = 'a t
+
+    let return = Base_quickcheck.Generator.return
+    let apply = Base_quickcheck.Generator.apply
+    let map = `Custom Base_quickcheck.Generator.map
+  end)
+
+
+include For_applicative
+module Applicative_infix = For_applicative.Applicative_infix
+include Applicative_infix
+
+let num_binds = ref 0
+
+let get_num_binds () = !num_binds
+let reset_bind_count () = num_binds := 0
+
+module For_monad = Base.Monad.Make (struct
+    type nonrec 'a t = 'a t
+
+    let return = Base_quickcheck.Generator.return
+        let bind x ~f = incr num_binds; Base_quickcheck.Generator.bind x ~f
+    let map = `Custom Base_quickcheck.Generator.map
+  end)
+
+
+include For_monad
+include Monad_infix
+
+let weighted_union = Base_quickcheck.Generator.weighted_union
+let jit ?extra_cmi_paths:_ g = g
+let union = Base_quickcheck.Generator.union
+let of_list = Base_quickcheck.Generator.of_list
+let of_list_dyn = Base_quickcheck.Generator.of_list
+let int = Base_quickcheck.Generator.int
+let int_uniform = Base_quickcheck.Generator.int_uniform
+let int_inclusive ~lo ~hi = Base_quickcheck.Generator.int_inclusive lo hi
+let int_uniform_inclusive ~lo ~hi = Base_quickcheck.Generator.int_uniform_inclusive lo hi
+let int_log_uniform_inclusive ~lo ~hi = Base_quickcheck.Generator.int_log_uniform_inclusive lo hi
+let int_log_inclusive ~lo ~hi = Base_quickcheck.Generator.int_log_inclusive lo hi
+
+let float_uniform_exclusive ~lo ~hi = Base_quickcheck.Generator.float_uniform_exclusive lo hi
+let float_uniform_inclusive ~lo ~hi = Base_quickcheck.Generator.create (fun ~size:_ ~random -> Splittable_random.float random ~lo ~hi)
+let bool = Base_quickcheck.Generator.bool
+
+let list = Base_quickcheck.Generator.list
+
+let if_z (n : int c) (gz : 'a t) (gsucc : 'a t) : 'a t =
+  if n <= 0 then gz else gsucc
+
+let size = Base_quickcheck.Generator.size
+let with_size g ~size_c = Base_quickcheck.Generator.with_size ~size:size_c g
+
+type ('a,'r) recgen = 'r -> 'a t
+let recurse f = f
+let recursive (type a) (type r) (x0 : r ) (step : (a,r) recgen -> r -> a t) =
+  let rec go x =
+    step go x 
+  in
+  (go x0)
+
+let to_bq x = x
