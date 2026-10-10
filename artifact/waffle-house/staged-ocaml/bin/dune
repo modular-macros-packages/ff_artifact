@@ -1,0 +1,4 @@
+(executable
+ (public_name fast_gen)
+ (name main)
+ (libraries fast_gen))
